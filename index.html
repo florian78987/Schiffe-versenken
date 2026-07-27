@@ -26,10 +26,6 @@ body{
     margin-bottom:15px;
 }
 
-.card h3{
-    margin-top:0;
-}
-
 select{
     width:100%;
     padding:12px;
@@ -94,7 +90,7 @@ button:hover{
         <select id="number"></select>
     </div>
 
-    <button onclick="fire()">🚀 FEUERN</button>
+    <button id="fireButton" onclick="fire()">🚀 FEUERN</button>
 
     <div class="info" id="result">
         Bereit
@@ -110,14 +106,14 @@ button:hover{
 
 <script>
 
-// Buchstaben A-Z
+// A-Z
 const letters = [
 "A","B","C","D","E","F","G","H","I","J",
 "K","L","M","N","O","P","Q","R","S","T",
 "U","V","W","X","Y","Z"
 ];
 
-// Zahlen 1-26
+// 1-26
 const numbers = [];
 for(let i = 1; i <= 26; i++){
     numbers.push(i);
@@ -139,10 +135,13 @@ const ships = {
 const hits = [];
 const sunkShips = [];
 
+let missCounter = 0;
+let countdownInterval = null;
+
 const letterSelect = document.getElementById("letter");
 const numberSelect = document.getElementById("number");
 
-// Dropdown füllen
+// Dropdowns befüllen
 letters.forEach(letter => {
     const option = document.createElement("option");
     option.value = letter;
@@ -157,6 +156,39 @@ numbers.forEach(number => {
     numberSelect.appendChild(option);
 });
 
+function lockGame(seconds){
+
+    const fireButton = document.getElementById("fireButton");
+
+    fireButton.disabled = true;
+
+    let remaining = seconds;
+
+    document.getElementById("result").innerHTML =
+        "🔒 Gesperrt: " + remaining + " Sek.";
+
+    countdownInterval = setInterval(() => {
+
+        remaining--;
+
+        if(remaining <= 0){
+
+            clearInterval(countdownInterval);
+
+            fireButton.disabled = false;
+
+            document.getElementById("result").innerHTML =
+                "✅ Weiter spielen";
+
+        }else{
+
+            document.getElementById("result").innerHTML =
+                "🔒 Gesperrt: " + remaining + " Sek.";
+        }
+
+    }, 1000);
+}
+
 function fire(){
 
     const shot =
@@ -165,8 +197,10 @@ function fire(){
         numberSelect.value;
 
     if(hits.includes(shot)){
+
         document.getElementById("result").innerHTML =
             "⚠️ Bereits beschossen";
+
         return;
     }
 
@@ -178,9 +212,13 @@ function fire(){
 
         if(ship.includes(shot)){
 
+            // Fehlversuche zurücksetzen
+            missCounter = 0;
+
             let sunk = true;
 
             for(const pos of ship){
+
                 if(!hits.includes(pos)){
                     sunk = false;
                 }
@@ -214,13 +252,33 @@ function fire(){
         }
     }
 
-    document.getElementById("result").innerHTML =
-        "❌ KEIN TREFFER";
+    // Kein Treffer
+    missCounter++;
+
+    if(missCounter >= 5){
+
+        missCounter = 0;
+
+        document.getElementById("result").innerHTML =
+            "🔒 20 Sekunden gesperrt";
+
+        lockGame(20);
+
+    }else{
+
+        document.getElementById("result").innerHTML =
+            "❌ KEIN TREFFER (" +
+            missCounter +
+            "/5)";
+    }
 
     document.getElementById("log").innerHTML =
-        shot + " → Kein Treffer<br>" +
+        shot + " → " +
+        document.getElementById("result").innerHTML +
+        "<br>" +
         document.getElementById("log").innerHTML;
 }
+
 </script>
 
 </body>
