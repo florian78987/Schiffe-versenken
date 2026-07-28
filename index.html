@@ -6,6 +6,7 @@
 <title>Schiffe versenken</title>
 
 <style>
+
 body{
     font-family: Arial, sans-serif;
     background:#f2f2f2;
@@ -14,7 +15,7 @@ body{
 }
 
 .container{
-    max-width:400px;
+    max-width:500px;
     margin:auto;
 }
 
@@ -24,6 +25,16 @@ body{
     border-radius:12px;
     padding:20px;
     margin-bottom:15px;
+}
+
+.card h2,
+.card h3{
+    margin-top:0;
+}
+
+.card ul{
+    padding-left:20px;
+    line-height:1.8;
 }
 
 select{
@@ -44,8 +55,9 @@ button{
     cursor:pointer;
 }
 
-button:hover{
-    background:#256628;
+button:disabled{
+    background:grey;
+    cursor:not-allowed;
 }
 
 .info{
@@ -71,158 +83,263 @@ button:hover{
     margin-top:15px;
     padding:15px;
     border-radius:12px;
-    max-height:250px;
+    max-height:300px;
     overflow-y:auto;
 }
+
 </style>
 </head>
 <body>
 
 <div class="container">
 
-    <div class="card">
-        <h3>Buchstabe</h3>
-        <select id="letter"></select>
-    </div>
+<div class="card">
+<h2>📜 Spielregeln</h2>
 
-    <div class="card">
-        <h3>Zahl</h3>
-        <select id="number"></select>
-    </div>
+<ul>
+<li>🎯 Treffer = Schiff getroffen</li>
+<li>🚢 Versenkt = komplettes Schiff zerstört</li>
+<li>❌ Kein Treffer = Wasser</li>
+<li>⚠️ 5 Fehlschüsse in Folge = 20 Sekunden Sperre</li>
+<li>💣 7 Minen sind zufällig verteilt</li>
+<li>💣 Mine getroffen = 3 Minuten Sperre</li>
+</ul>
 
-    <button id="fireButton" onclick="fire()">🚀 FEUERN</button>
+</div>
 
-    <div class="info" id="result">
-        Bereit
-    </div>
+<div class="card">
+<h3>Buchstabe</h3>
+<select id="letter"></select>
+</div>
 
-    <div class="stats">
-        Versenkt: <span id="sunkCount">0</span> / 9
-    </div>
+<div class="card">
+<h3>Zahl</h3>
+<select id="number"></select>
+</div>
 
-    <div class="log" id="log"></div>
+<button id="fireButton" onclick="fire()">
+🚀 FEUERN
+</button>
+
+<div class="info" id="result">
+Bereit
+</div>
+
+<div class="stats">
+🚢 Versenkt:
+<span id="sunkCount">0</span> / 9
+</div>
+
+<div class="log" id="log"></div>
 
 </div>
 
 <script>
 
-// A-Z
+// Alphabet
 const letters = [
 "A","B","C","D","E","F","G","H","I","J",
 "K","L","M","O","P","Q","R","S","T",
 "U","V","W","X","Y","Z"
 ];
 
-// 1-26
+// Zahlen
 const numbers = [];
-for(let i = 1; i <= 26; i++){
+
+for(let i=1;i<=26;i++){
     numbers.push(i);
 }
 
 // Schiffe
 const ships = {
-    1:["B-21","B-14"],
-    2:["M-9","M-11","M-2","M-20"],
-    3:["T-4","J-4","B-4","U-4","K-4","L-4"],
-    4:["E-9","W-9","X-9","O-9","P-9"],
-    5:["E-20","W-20","X-20","O-20","P-20"],
-    6:["Y-9","Y-11","Y-2","Y-20"],
-    7:["I-12","I-21","I-14","I-4"],
-    8:["X-11","X-2"],
-    9:["D-15","M-15","E-15","W-15","X-15","O-15"]
+1:["B-21","B-14"],
+2:["M-9","M-11","M-2","M-20"],
+3:["T-4","J-4","B-4","U-4","K-4","L-4"],
+4:["E-9","W-9","X-9","O-9","P-9"],
+5:["E-20","W-20","X-20","O-20","P-20"],
+6:["Y-9","Y-11","Y-2","Y-20"],
+7:["I-12","I-21","I-14","I-4"],
+8:["X-11","X-2"],
+9:["D-15","M-15","E-15","W-15","X-15","O-15"]
 };
 
 const hits = [];
 const sunkShips = [];
 
 let missCounter = 0;
-let countdownInterval = null;
 
-const letterSelect = document.getElementById("letter");
-const numberSelect = document.getElementById("number");
-
-// Dropdowns befüllen
+// Dropdowns erzeugen
 letters.forEach(letter => {
-    const option = document.createElement("option");
+
+    const option =
+        document.createElement("option");
+
     option.value = letter;
     option.textContent = letter;
-    letterSelect.appendChild(option);
+
+    document
+        .getElementById("letter")
+        .appendChild(option);
 });
 
 numbers.forEach(number => {
-    const option = document.createElement("option");
+
+    const option =
+        document.createElement("option");
+
     option.value = number;
     option.textContent = number;
-    numberSelect.appendChild(option);
+
+    document
+        .getElementById("number")
+        .appendChild(option);
 });
+
+// Schiffsfelder sammeln
+const shipFields = new Set();
+
+for(const shipId in ships){
+
+    ships[shipId].forEach(pos => {
+        shipFields.add(pos);
+    });
+}
+
+// Alle Felder
+const allFields = [];
+
+for(const letter of letters){
+    for(let i = 1; i <= 26; i++){
+        allFields.push(letter + "-" + i);
+    }
+}
+
+// Minen erzeugen
+const mines = [];
+
+while(mines.length < 7){
+
+    const randomField =
+        allFields[
+            Math.floor(
+                Math.random() *
+                allFields.length
+            )
+        ];
+
+    if(
+        !shipFields.has(randomField) &&
+        !mines.includes(randomField)
+    ){
+        mines.push(randomField);
+    }
+}
 
 function lockGame(seconds){
 
-    const fireButton = document.getElementById("fireButton");
+    const button =
+        document.getElementById("fireButton");
 
-    fireButton.disabled = true;
+    button.disabled = true;
 
     let remaining = seconds;
 
-    document.getElementById("result").innerHTML =
-        "🔒 Gesperrt: " + remaining + " Sek.";
+    document
+        .getElementById("result")
+        .innerHTML =
+        "🔒 Gesperrt: " +
+        remaining +
+        " Sek.";
 
-    countdownInterval = setInterval(() => {
+    const timer = setInterval(() => {
 
         remaining--;
 
         if(remaining <= 0){
 
-            clearInterval(countdownInterval);
+            clearInterval(timer);
 
-            fireButton.disabled = false;
+            button.disabled = false;
 
-            document.getElementById("result").innerHTML =
+            document
+                .getElementById("result")
+                .innerHTML =
                 "✅ Weiter spielen";
 
         }else{
 
-            document.getElementById("result").innerHTML =
-                "🔒 Gesperrt: " + remaining + " Sek.";
+            document
+                .getElementById("result")
+                .innerHTML =
+                "🔒 Gesperrt: " +
+                remaining +
+                " Sek.";
         }
 
-    }, 1000);
+    },1000);
 }
 
 function fire(){
 
     const shot =
-        letterSelect.value +
+        document
+            .getElementById("letter")
+            .value +
         "-" +
-        numberSelect.value;
+        document
+            .getElementById("number")
+            .value;
 
     if(hits.includes(shot)){
 
-        document.getElementById("result").innerHTML =
-            "⚠️ Bereits beschossen";
+        document
+        .getElementById("result")
+        .innerHTML =
+        "⚠️ Bereits beschossen";
 
         return;
     }
 
     hits.push(shot);
 
+    // Mine?
+    if(mines.includes(shot)){
+
+        document
+        .getElementById("result")
+        .innerHTML =
+        "💣 MINE GETROFFEN!";
+
+        document
+        .getElementById("log")
+        .innerHTML =
+        shot +
+        " → 💣 Mine<br>" +
+        document.getElementById("log").innerHTML;
+
+        lockGame(180);
+
+        return;
+    }
+
+    // Schiffe prüfen
     for(const shipId in ships){
 
         const ship = ships[shipId];
 
         if(ship.includes(shot)){
 
-            // Fehlversuche zurücksetzen
             missCounter = 0;
 
             let sunk = true;
 
-            for(const pos of ship){
+            ship.forEach(pos => {
 
                 if(!hits.includes(pos)){
                     sunk = false;
                 }
-            }
+
+            });
 
             if(sunk){
 
@@ -230,23 +347,32 @@ function fire(){
                     sunkShips.push(shipId);
                 }
 
-                document.getElementById("result").innerHTML =
-                    "🚢 VERSENKT!";
+                document
+                .getElementById("result")
+                .innerHTML =
+                "🚢 VERSENKT!";
 
             }else{
 
-                document.getElementById("result").innerHTML =
-                    "🎯 TREFFER!";
+                document
+                .getElementById("result")
+                .innerHTML =
+                "🎯 TREFFER!";
             }
 
-            document.getElementById("sunkCount").textContent =
-                sunkShips.length;
+            document
+            .getElementById("sunkCount")
+            .innerHTML =
+            sunkShips.length;
 
-            document.getElementById("log").innerHTML =
-                shot + " → " +
-                document.getElementById("result").innerHTML +
-                "<br>" +
-                document.getElementById("log").innerHTML;
+            document
+            .getElementById("log")
+            .innerHTML =
+            shot +
+            " → " +
+            document.getElementById("result").innerHTML +
+            "<br>" +
+            document.getElementById("log").innerHTML;
 
             return;
         }
@@ -259,24 +385,31 @@ function fire(){
 
         missCounter = 0;
 
-        document.getElementById("result").innerHTML =
-            "🔒 20 Sekunden gesperrt";
+        document
+        .getElementById("log")
+        .innerHTML =
+        shot +
+        " → 🔒 20 Sek. Sperre<br>" +
+        document.getElementById("log").innerHTML;
 
         lockGame(20);
 
     }else{
 
-        document.getElementById("result").innerHTML =
-            "❌ KEIN TREFFER (" +
-            missCounter +
-            "/5)";
-    }
+        document
+        .getElementById("result")
+        .innerHTML =
+        "❌ KEIN TREFFER (" +
+        missCounter +
+        "/5)";
 
-    document.getElementById("log").innerHTML =
-        shot + " → " +
-        document.getElementById("result").innerHTML +
-        "<br>" +
+        document
+        .getElementById("log")
+        .innerHTML =
+        shot +
+        " → Kein Treffer<br>" +
         document.getElementById("log").innerHTML;
+    }
 }
 
 </script>
